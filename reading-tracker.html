@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Reading Tracker</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="My Books">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230d1535'/%3E%3Ctext y='.9em' font-size='72' x='50%25' dominant-baseline='middle' text-anchor='middle'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0d1535">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg:      #0d1535;
+      --surface: #141e42;
+      --surface2:#1a2550;
+      --border:  rgba(200,165,90,0.16);
+      --accent:  #c8a55a;
+      --accent2: #e8c87a;
+      --text:    #eef2ff;
+      --muted:   rgba(238,242,255,0.38);
+      --faint:   rgba(238,242,255,0.07);
+      --green:   #7cb87a;
+      --blue:    #7aaed4;
+      --rose:    #d47a8a;
+    }
+
+    html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, Georgia, serif; min-height: 100dvh; }
+
+    .app { max-width: 540px; margin: 0 auto; padding-bottom: 80px; }
+
+    /* HEADER */
+    .header { padding: 52px 24px 16px; }
+    .eyebrow { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; font-family: -apple-system, sans-serif; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; }
+    .header-title { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; }
+    .goal-pill {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(200,137,58,0.1); border: 1px solid rgba(200,137,58,0.22);
+      border-radius: 99px; padding: 6px 13px; font-family: -apple-system, sans-serif;
+      font-size: 0.78rem; color: var(--accent); cursor: pointer; white-space: nowrap;
+    }
+    .goal-num { font-size: 0.95rem; font-weight: 700; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 6px; padding: 16px 24px 0; }
+    .tab-btn {
+      flex: 1; padding: 10px 0; border: 1px solid var(--border);
+      background: transparent; color: var(--muted);
+      border-radius: 12px; font-size: 0.78rem; letter-spacing: 0.06em;
+      text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+      font-family: -apple-system, sans-serif;
+    }
+    .tab-btn.active {
+      background: rgba(200,137,58,0.1); border-color: rgba(200,137,58,0.35);
+      color: var(--accent); font-weight: 600;
+    }
+
+    .tab-panel { display: none; padding: 20px 24px 0; }
+    .tab-panel.active { display: block; }
+
+    /* SECTION LABEL */
+    .section-label { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-family: -apple-system, sans-serif; }
+
+    /* CURRENTLY READING */
+    .current-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 20px; margin-bottom: 24px; cursor: pointer;
+    }
+    .current-card.empty { border-style: dashed; border-color: rgba(200,165,90,0.25); background: transparent; display: flex; align-items: center; justify-content: center; min-height: 90px; flex-direction: column; gap: 6px; cursor: default; }
+    .current-card.empty .empty-icon { font-size: 1.6rem; opacity: 0.3; }
+    .current-card.empty .empty-text { font-size: 0.8rem; color: rgba(200,165,90,0.35); font-family: -apple-system, sans-serif; }
+
+    .book-row { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+    .book-emoji { font-size: 2.8rem; line-height: 1; flex-shrink: 0; }
+    .book-info { flex: 1; min-width: 0; }
+    .book-title { font-size: 1.05rem; font-weight: 600; line-height: 1.25; margin-bottom: 3px; }
+    .book-author { font-size: 0.8rem; color: var(--muted); font-family: -apple-system, sans-serif; margin-bottom: 6px; }
+    .book-genre { display: inline-block; font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); background: rgba(200,137,58,0.1); border-radius: 6px; padding: 2px 8px; font-family: -apple-system, sans-serif; }
+
+    .progress-wrap { margin-bottom: 6px; }
+    .progress-bar { height: 4px; background: var(--faint); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.4s; }
+    .progress-text { font-size: 0.72rem; color: var(--muted); font-family: -apple-system, sans-serif; display: flex; justify-content: space-between; }
+
+    .update-pages-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+    .page-input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 8px 12px; color: var(--text); font-size: 0.9rem; font-family: -apple-system, sans-serif;
+      outline: none;
+    }
+    .page-input:focus { border-color: var(--accent); }
+    .update-btn {
+      background: rgba(200,137,58,0.15); border: 1px solid rgba(200,137,58,0.3);
+      border-radius: 10px; padding: 8px 16px; color: var(--accent);
+      font-size: 0.8rem; font-family: -apple-system, sans-serif; cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* BOOK LIST */
+    .book-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .book-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .book-item:active { border-color: var(--accent); }
+    .book-item-emoji { font-size: 1.8rem; flex-shrink: 0; }
+    .book-item-body { flex: 1; min-width: 0; }
+    .book-item-title { font-size: 0.92rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .book-item-author { font-size: 0.75rem; color: var(--muted); font-family: -apple-system, sans-serif; }
+    .book-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .status-chip {
+      font-size: 0.62rem; letter-spacing: 0.07em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 6px; font-family: -apple-system, sans-serif; font-weight: 600;
+    }
+    .status-reading  { background: rgba(122,174,212,0.15); color: var(--blue); }
+    .status-read     { background: rgba(124,184,122,0.15); color: var(--green); }
+    .status-want     { background: rgba(200,137,58,0.12); color: var(--accent); }
+
+    .stars { font-size: 0.7rem; color: var(--accent2); letter-spacing: 1px; }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent2); line-height: 1; margin-bottom: 4px; }
+    .stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: -apple-system, sans-serif; }
+
+    .year-goal-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin-bottom: 20px; }
+    .year-goal-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+    .year-goal-title { font-size: 0.85rem; font-weight: 600; }
+    .year-goal-pct { font-size: 0.8rem; color: var(--accent); font-family: -apple-system, sans-serif; }
+    .year-bar { height: 8px; background: var(--faint); border-radius: 99px; overflow: hidden; }
+    .year-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.6s; }
+
+    /* STREAK PILL */
+    .streak-pill { background: rgba(255,140,0,0.12); border: 1px solid rgba(255,140,0,0.25); border-radius: 99px; padding: 5px 12px; font-size: 0.8rem; font-weight: 700; color: #ffb347; font-family: -apple-system, sans-serif; white-space: nowrap; }
+
+    /* QUICK BUMP BUTTONS */
+    .quick-bump-row { display: flex; gap: 8px; margin-top: 10px; }
+    .bump-btn { flex: 1; background: rgba(200,165,90,0.1); border: 1px solid rgba(200,165,90,0.25); border-radius: 10px; padding: 8px 0; font-size: 0.8rem; font-weight: 600; color: var(--accent); font-family: -apple-system, sans-serif; cursor: pointer; transition: background 0.15s; touch-action: manipulation; }
+    .bump-btn:active { background: rgba(200,165,90,0.22); }
+    .bump-btn.quotes-btn { color: rgba(200,165,90,0.6); font-weight: 400; }
+
+    /* QUOTES MODAL */
+    .quotes-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    .quotes-modal-bg.open { opacity: 1; pointer-events: all; }
+    .quotes-modal { background: var(--surface2); border-radius: 24px 24px 0 0; width: 100%; max-width: 480px; padding: 16px 20px 40px; max-height: 85vh; overflow-y: auto; transform: translateY(40px); transition: transform 0.3s; }
+    .quotes-modal-bg.open .quotes-modal { transform: translateY(0); }
+    .quotes-modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .quotes-modal-sub { font-size: 0.75rem; color: var(--muted); font-family: -apple-system, sans-serif; margin-bottom: 16px; }
+    .quote-input-row { display: flex; gap: 8px; margin-bottom: 20px; }
+    .quote-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; color: var(--text); font-size: 0.85rem; font-family: -apple-system, sans-serif; outline: none; resize: none; min-height: 60px; }
+    .quote-input:focus { border-color: var(--accent); }
+    .quote-save-btn { background: var(--accent); color: #0f0c08; border: none; border-radius: 12px; padding: 0 16px; font-size: 0.8rem; font-weight: 700; font-family: -apple-system, sans-serif; cursor: pointer; align-self: flex-end; height: 40px; white-space: nowrap; }
+    .quote-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; position: relative; }
+    .quote-text { font-size: 0.88rem; line-height: 1.5; color: var(--text); margin-bottom: 6px; font-style: italic; }
+    .quote-meta { font-size: 0.7rem; color: var(--muted); font-family: -apple-system, sans-serif; display: flex; justify-content: space-between; align-items: center; }
+    .quote-del { background: none; border: none; color: rgba(200,165,90,0.4); cursor: pointer; font-size: 0.75rem; font-family: -apple-system, sans-serif; padding: 0; }
+    .quote-del:active { color: #e87; }
+    .quotes-empty { text-align: center; padding: 32px 0; color: var(--muted); font-size: 0.85rem; font-family: -apple-system, sans-serif; }
+
+    /* ADD BUTTON */
+    .add-fab {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #0f0c08; border: none;
+      border-radius: 99px; padding: 14px 32px; font-size: 0.9rem; font-weight: 700;
+      font-family: -apple-system, sans-serif; cursor: pointer; letter-spacing: 0.02em;
+      box-shadow: 0 4px 24px rgba(200,137,58,0.35);
+      display: flex; align-items: center; gap: 8px;
+      max-width: 320px; width: calc(100% - 48px);
+      justify-content: center;
+    }
+
+    /* MODAL */
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-bg.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: #1c1610; border-radius: 28px 28px 0 0;
+      padding: 28px 24px 48px; width: 100%; max-width: 540px;
+      transform: translateY(100%); transition: transform 0.3s cubic-bezier(.32,.72,0,1);
+      max-height: 90dvh; overflow-y: auto;
+    }
+    .modal-bg.open .modal { transform: translateY(0); }
+
+    .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+    .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+
+    .form-row { margin-bottom: 14px; }
+    .form-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-family: -apple-system, sans-serif; display: block; }
+    .form-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 11px 14px; color: var(--text);
+      font-size: 0.95rem; font-family: -apple-system, BlinkMacSystemFont, Georgia, serif;
+      outline: none;
+    }
+    .form-input:focus { border-color: var(--accent); }
+
+    .emoji-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .emoji-opt {
+      width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid var(--border);
+      background: var(--surface2); display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; cursor: pointer; transition: border-color 0.15s;
+    }
+    .emoji-opt.selected { border-color: var(--accent); background: rgba(200,137,58,0.12); }
+
+    .status-row { display: flex; gap: 8px; }
+    .status-opt {
+      flex: 1; padding: 10px 6px; border-radius: 10px; border: 1.5px solid var(--border);
+      background: var(--surface2); color: var(--muted); font-size: 0.75rem; font-family: -apple-system, sans-serif;
+      text-align: center; cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em;
+    }
+    .status-opt.selected { border-color: var(--accent); color: var(--accent); background: rgba(200,137,58,0.1); }
+
+    .genre-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .genre-opt {
+      padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--muted); font-size: 0.75rem;
+      font-family: -apple-system, sans-serif; cursor: pointer; transition: all 0.15s;
+      touch-action: manipulation;
+    }
+    .genre-opt.selected { border-color: var(--accent); color: var(--accent); background: rgba(200,137,58,0.1); }
+
+    .star-row { display: flex; gap: 6px; }
+    .star-btn { font-size: 1.5rem; cursor: pointer; opacity: 0.3; transition: opacity 0.15s; line-height: 1; }
+    .star-btn.lit { opacity: 1; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save {
+      flex: 1; background: var(--accent); color: #0f0c08; border: none;
+      border-radius: 12px; padding: 14px; font-size: 0.9rem; font-weight: 700;
+      font-family: -apple-system, sans-serif; cursor: pointer;
+    }
+    .btn-delete {
+      background: rgba(212,122,138,0.12); border: 1px solid rgba(212,122,138,0.25);
+      color: var(--rose); border-radius: 12px; padding: 14px 18px; font-size: 0.85rem;
+      font-family: -apple-system, sans-serif; cursor: pointer;
+    }
+    .btn-cancel {
+      background: var(--faint); border: 1px solid var(--border); color: var(--muted);
+      border-radius: 12px; padding: 14px 18px; font-size: 0.85rem;
+      font-family: -apple-system, sans-serif; cursor: pointer;
+    }
+
+    /* GOAL MODAL */
+    .goal-modal-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s; padding: 24px;
+    }
+    .goal-modal-bg.open { opacity: 1; pointer-events: all; }
+    .goal-modal {
+      background: #1c1610; border-radius: 24px; padding: 28px 24px;
+      width: 100%; max-width: 340px;
+    }
+    .goal-modal h3 { font-size: 1.1rem; margin-bottom: 16px; }
+    .goal-modal input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px; color: var(--text); font-size: 1.1rem;
+      text-align: center; font-family: -apple-system, sans-serif; outline: none; margin-bottom: 14px;
+    }
+    .goal-modal input:focus { border-color: var(--accent); }
+    .goal-modal-actions { display: flex; gap: 8px; }
+    .goal-modal-actions button { flex: 1; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-family: -apple-system, sans-serif; cursor: pointer; }
+    .btn-goal-save { background: var(--accent); color: #0f0c08; border: none; font-weight: 700; }
+    .btn-goal-cancel { background: var(--faint); border: 1px solid var(--border); color: var(--muted); }
+
+    .footer-note { text-align: center; font-size: 0.66rem; color: rgba(240,232,216,0.18); padding: 8px 24px 0; font-family: -apple-system, sans-serif; }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); font-family: -apple-system, sans-serif; font-size: 0.9rem; }
+    .empty-state-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="eyebrow">My Reading Life</div>
+    <div class="header-row">
+      <div class="header-title">📖 My Books</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="streak-pill" id="streak-pill">🔥 <span id="streak-count">0</span></div>
+        <div class="goal-pill" onclick="openGoalModal()">
+          <span class="goal-num" id="goal-done">0</span>
+          <span>/ <span id="goal-total">24</span> books 🎯</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('reading')">Reading</button>
+    <button class="tab-btn" onclick="switchTab('library')">Library</button>
+    <button class="tab-btn" onclick="switchTab('stats')">Stats</button>
+  </div>
+
+  <!-- READING TAB -->
+  <div class="tab-panel active" id="panel-reading">
+    <div class="section-label">Currently reading</div>
+    <div id="current-slot"></div>
+
+    <div class="section-label" id="tbr-label" style="margin-top:8px">Up next (TBR)</div>
+    <div class="book-list" id="tbr-list"></div>
+    <div class="footer-note">stored in your browser · clears with cache</div>
+  </div>
+
+  <!-- LIBRARY TAB -->
+  <div class="tab-panel" id="panel-library">
+    <div class="section-label">All books</div>
+    <div class="book-list" id="all-list"></div>
+    <div class="footer-note" style="margin-top:8px">stored in your browser · clears with cache</div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div class="tab-panel" id="panel-stats">
+    <div class="year-goal-bar">
+      <div class="year-goal-row">
+        <div class="year-goal-title" id="stats-year-title">2026 Reading Goal</div>
+        <div class="year-goal-pct" id="stats-pct">0%</div>
+      </div>
+      <div class="year-bar"><div class="year-fill" id="year-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-read">0</div>
+        <div class="stat-label">Books read</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-pages">0</div>
+        <div class="stat-label">Pages read</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-rating">—</div>
+        <div class="stat-label">Avg rating</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-tbr">0</div>
+        <div class="stat-label">TBR pile</div>
+      </div>
+    </div>
+
+    <div class="section-label">Top genre</div>
+    <div class="stat-card" style="margin-bottom:20px">
+      <div class="stat-value" style="font-size:1.3rem" id="stat-genre">—</div>
+      <div class="stat-label">Most read</div>
+    </div>
+
+    <div class="footer-note">stored in your browser · clears with cache</div>
+  </div>
+
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<button class="add-fab" onclick="openAdd()">＋ Add book</button>
+
+<div class="modal-bg" id="modal-bg" onclick="handleModalBgClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Add a book</div>
+
+    <div class="form-row">
+      <label class="form-label">Cover emoji</label>
+      <div class="emoji-grid" id="emoji-grid"></div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Title</label>
+      <input class="form-input" id="f-title" type="text" autocomplete="off">
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Author</label>
+      <input class="form-input" id="f-author" type="text" autocomplete="off">
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Status</label>
+      <div class="status-row">
+        <div class="status-opt" data-status="want" onclick="pickStatus('want')">Want 💫</div>
+        <div class="status-opt selected" data-status="reading" onclick="pickStatus('reading')">Reading 📖</div>
+        <div class="status-opt" data-status="read" onclick="pickStatus('read')">Read ✅</div>
+      </div>
+    </div>
+
+    <div class="form-row row2">
+      <div>
+        <label class="form-label">Total pages</label>
+        <input class="form-input" id="f-pages" type="number" min="1" placeholder="300">
+      </div>
+      <div>
+        <label class="form-label">Current page</label>
+        <input class="form-input" id="f-current" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Genre</label>
+      <div class="genre-grid" id="genre-grid"></div>
+    </div>
+
+    <div class="form-row" id="rating-row">
+      <label class="form-label">Rating</label>
+      <div class="star-row" id="star-row"></div>
+    </div>
+
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- QUOTES MODAL -->
+<div class="quotes-modal-bg" id="quotes-modal-bg" onclick="if(event.target===this)closeQuotes()">
+  <div class="quotes-modal">
+    <div class="modal-handle"></div>
+    <div class="quotes-modal-title" id="quotes-modal-title">💬 Quotes</div>
+    <div class="quotes-modal-sub">Save your favourite lines from this book</div>
+    <div class="quote-input-row">
+      <textarea class="quote-input" id="quote-inp" placeholder="Type a quote…" rows="2"></textarea>
+      <button class="quote-save-btn" onclick="addQuote()">Save</button>
+    </div>
+    <div id="quotes-list"></div>
+  </div>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="goal-modal-bg" id="goal-modal-bg" onclick="handleGoalBgClick(event)">
+  <div class="goal-modal">
+    <h3>📚 Set your reading goal</h3>
+    <input type="number" id="goal-input" min="1" max="500" placeholder="24">
+    <div class="goal-modal-actions">
+      <button class="btn-goal-cancel" onclick="closeGoalModal()">Cancel</button>
+      <button class="btn-goal-save" onclick="saveGoal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──
+const STORAGE_KEY   = 'rb_books';
+const GOAL_KEY      = 'rb_goal_' + new Date().getFullYear();
+const STREAK_KEY    = 'rb_streak';
+const QUOTES_KEY    = 'rb_quotes';
+
+function loadStreak() {
+  try { return JSON.parse(localStorage.getItem(STREAK_KEY)) || { count: 0, last: '' }; }
+  catch(e) { return { count: 0, last: '' }; }
+}
+function touchStreak() {
+  const today = new Date().toISOString().slice(0,10);
+  const s = loadStreak();
+  if (s.last === today) return s;
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const count = s.last === yesterday ? s.count + 1 : 1;
+  const updated = { count, last: today };
+  localStorage.setItem(STREAK_KEY, JSON.stringify(updated));
+  return updated;
+}
+function loadQuotes(bookId) {
+  try { const all = JSON.parse(localStorage.getItem(QUOTES_KEY)) || {}; return all[bookId] || []; }
+  catch(e) { return []; }
+}
+function saveQuote(bookId, text) {
+  try {
+    const all = JSON.parse(localStorage.getItem(QUOTES_KEY)) || {};
+    if (!all[bookId]) all[bookId] = [];
+    all[bookId].push({ id: uid(), text, date: new Date().toISOString().slice(0,10) });
+    localStorage.setItem(QUOTES_KEY, JSON.stringify(all));
+  } catch(e) {}
+}
+function deleteQuote(bookId, qid) {
+  try {
+    const all = JSON.parse(localStorage.getItem(QUOTES_KEY)) || {};
+    if (all[bookId]) all[bookId] = all[bookId].filter(q => q.id !== qid);
+    localStorage.setItem(QUOTES_KEY, JSON.stringify(all));
+  } catch(e) {}
+}
+
+const EMOJIS  = ['📚','📖','✨','🌙','🌿','🔥','💜','🌸','🦋','⚔️','🏰','🌊','🌺','🎭','🧙','💀','🌹','🍂','🐉','🕯️','🗡️','🌌'];
+const GENRES  = ['Fantasy','Romance','Sci-Fi','Thriller','Mystery','Horror','Historical','Non-Fiction','YA','Literary','Classics','Other'];
+const STATUS_LABEL = { want: 'Want 💫', reading: 'Reading 📖', read: 'Read ✅' };
+
+function loadBooks() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveBooks(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function loadGoal() { return parseInt(localStorage.getItem(GOAL_KEY)) || 24; }
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// ── STATE ──
+let editId     = null;
+let selEmoji   = '📚';
+let selStatus  = 'reading';
+let selGenre   = '';
+let selRating  = 0;
+
+// ── TABS ──
+function switchTab(tab) {
+  ['reading','library','stats'].forEach(t => {
+    document.getElementById('panel-'+t).classList.toggle('active', t===tab);
+  });
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['reading','library','stats'][i]===tab);
+  });
+  if (tab==='stats') renderStats();
+  if (tab==='library') renderLibrary();
+}
+
+// ── RENDER READING TAB ──
+function renderReading() {
+  const books = loadBooks();
+  const goal  = loadGoal();
+  const done  = books.filter(b => b.status==='read').length;
+  document.getElementById('goal-done').textContent  = done;
+  document.getElementById('goal-total').textContent = goal;
+  document.getElementById('stats-year-title').textContent = new Date().getFullYear() + ' Reading Goal';
+
+  // Currently reading
+  const reading = books.filter(b => b.status==='reading');
+  const slot = document.getElementById('current-slot');
+
+  if (!reading.length) {
+    slot.innerHTML = `<div class="current-card empty">
+      <div class="empty-icon">📖</div>
+      <div class="empty-text">nothing yet</div>
+    </div>`;
+  } else {
+    const b = reading[0];
+    const pct = b.totalPages ? Math.round((b.currentPage||0)/b.totalPages*100) : 0;
+    slot.innerHTML = `<div class="current-card" onclick="openEdit('${b.id}')">
+      <div class="book-row">
+        <div class="book-emoji">${esc(b.emoji)}</div>
+        <div class="book-info">
+          <div class="book-title">${esc(b.title)}</div>
+          <div class="book-author">${esc(b.author)}</div>
+          ${b.genre ? `<div class="book-genre">${esc(b.genre)}</div>` : ''}
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="progress-text"><span>page ${b.currentPage||0} of ${b.totalPages||'?'}</span><span>${pct}%</span></div>
+      </div>
+      <div class="update-pages-row" onclick="event.stopPropagation()">
+        <input class="page-input" type="number" id="page-inp-${b.id}" placeholder="Current page" min="0" max="${b.totalPages||9999}" value="${b.currentPage||0}">
+        <button class="update-btn" onclick="updatePage('${b.id}')">Update</button>
+      </div>
+      <div class="quick-bump-row" onclick="event.stopPropagation()">
+        <button class="bump-btn" onclick="bumpPages('${b.id}', 10)">+10 pages</button>
+        <button class="bump-btn" onclick="bumpPages('${b.id}', 25)">+25 pages</button>
+        <button class="bump-btn quotes-btn" onclick="openQuotes('${b.id}', '${esc(b.title)}')">💬 Quotes</button>
+      </div>
+    </div>`;
+    // extra reading books
+    if (reading.length > 1) {
+      const extra = reading.slice(1).map(rb => bookItemHTML(rb)).join('');
+      slot.innerHTML += `<div class="book-list">${extra}</div>`;
+    }
+  }
+
+  // TBR list
+  const tbr = books.filter(b => b.status==='want');
+  const tbrList = document.getElementById('tbr-list');
+  document.getElementById('tbr-label').style.display = tbr.length ? '' : 'none';
+  tbrList.innerHTML = tbr.map(b => bookItemHTML(b)).join('');
+}
+
+function bookItemHTML(b) {
+  const stars = b.rating ? '★'.repeat(b.rating) + '☆'.repeat(5-b.rating) : '';
+  const statusCls = 'status-' + b.status;
+  return `<div class="book-item" onclick="openEdit('${b.id}')">
+    <div class="book-item-emoji">${esc(b.emoji)}</div>
+    <div class="book-item-body">
+      <div class="book-item-title">${esc(b.title)}</div>
+      <div class="book-item-author">${esc(b.author)}</div>
+    </div>
+    <div class="book-item-right">
+      <span class="status-chip ${statusCls}">${STATUS_LABEL[b.status]}</span>
+      ${stars ? `<div class="stars">${stars}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function updatePage(id) {
+  const inp = document.getElementById('page-inp-' + id);
+  if (!inp) return;
+  const val = parseInt(inp.value) || 0;
+  const books = loadBooks();
+  const idx = books.findIndex(b => b.id === id);
+  if (idx < 0) return;
+  books[idx].currentPage = val;
+  if (books[idx].totalPages && val >= books[idx].totalPages) {
+    books[idx].status = 'read';
+    books[idx].dateFinished = new Date().toISOString().slice(0,10);
+  }
+  touchStreak(); renderStreakUI();
+  saveBooks(books);
+  renderReading();
+}
+
+// ── RENDER LIBRARY ──
+function renderLibrary() {
+  const books = loadBooks();
+  const list = document.getElementById('all-list');
+  if (!books.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📚</div>No books yet. Tap + to add!</div>`;
+    return;
+  }
+  // Group: reading → read → want
+  const order = { reading: 0, read: 1, want: 2 };
+  const sorted = [...books].sort((a,b) => order[a.status]-order[b.status]);
+  list.innerHTML = sorted.map(b => bookItemHTML(b)).join('');
+}
+
+// ── RENDER STATS ──
+function renderStats() {
+  const books  = loadBooks();
+  const goal   = loadGoal();
+  const read   = books.filter(b => b.status==='read');
+  const tbr    = books.filter(b => b.status==='want');
+  const pages  = read.reduce((s,b) => s + (b.totalPages||0), 0);
+  const ratings = read.filter(b => b.rating).map(b => b.rating);
+  const avgRating = ratings.length ? (ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1) : '—';
+  const pct = goal ? Math.min(100, Math.round(read.length/goal*100)) : 0;
+
+  const genres = {};
+  read.forEach(b => { if (b.genre) genres[b.genre] = (genres[b.genre]||0)+1; });
+  const topGenre = Object.entries(genres).sort((a,b)=>b[1]-a[1])[0];
+
+  document.getElementById('stat-read').textContent   = read.length;
+  document.getElementById('stat-pages').textContent  = pages > 999 ? (pages/1000).toFixed(1)+'k' : pages;
+  document.getElementById('stat-rating').textContent = avgRating;
+  document.getElementById('stat-tbr').textContent    = tbr.length;
+  document.getElementById('stats-pct').textContent   = pct + '%';
+  document.getElementById('year-fill').style.width   = pct + '%';
+  document.getElementById('stat-genre').textContent  = topGenre ? topGenre[0] : '—';
+  document.getElementById('goal-done').textContent   = read.length;
+  document.getElementById('goal-total').textContent  = goal;
+}
+
+// ── GOAL MODAL ──
+function openGoalModal() {
+  document.getElementById('goal-input').value = loadGoal();
+  document.getElementById('goal-modal-bg').classList.add('open');
+}
+function closeGoalModal() {
+  document.getElementById('goal-modal-bg').classList.remove('open');
+}
+function saveGoal() {
+  const v = parseInt(document.getElementById('goal-input').value);
+  if (v > 0) { localStorage.setItem(GOAL_KEY, v); }
+  closeGoalModal();
+  renderReading();
+}
+function handleGoalBgClick(e) {
+  if (e.target === document.getElementById('goal-modal-bg')) closeGoalModal();
+}
+
+// ── ADD / EDIT MODAL ──
+function buildModalUI() {
+  // emoji grid
+  const eg = document.getElementById('emoji-grid');
+  eg.innerHTML = EMOJIS.map(e =>
+    `<div class="emoji-opt${e===selEmoji?' selected':''}" onclick="pickEmoji('${e}')">${e}</div>`
+  ).join('');
+
+  // genre
+  const gg = document.getElementById('genre-grid');
+  gg.innerHTML = GENRES.map(g =>
+    `<div class="genre-opt${g===selGenre?' selected':''}" data-genre="${g}" onclick="pickGenre('${g}')">${g}</div>`
+  ).join('');
+
+  // stars
+  const sr = document.getElementById('star-row');
+  sr.innerHTML = [1,2,3,4,5].map(n =>
+    `<span class="star-btn${n<=selRating?' lit':''}" onclick="pickRating(${n})">★</span>`
+  ).join('');
+
+  // status
+  document.querySelectorAll('.status-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.status === selStatus);
+  });
+
+  // rating row: hide if not "read"
+  document.getElementById('rating-row').style.display = selStatus==='read' ? '' : 'none';
+  // current page: hide if "want"
+  document.querySelector('.form-row.row2').style.display = selStatus==='want' ? 'none' : '';
+}
+
+function openAdd(defaultStatus) {
+  editId    = null;
+  selEmoji  = '📚';
+  selStatus = defaultStatus || 'reading';
+  selGenre  = '';
+  selRating = 0;
+  document.getElementById('f-title').value   = '';
+  document.getElementById('f-author').value  = '';
+  document.getElementById('f-pages').value   = '';
+  document.getElementById('f-current').value = '';
+  document.getElementById('modal-title').textContent = 'Add a book';
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+    <button class="btn-save" onclick="saveBook()">Add book</button>`;
+  buildModalUI();
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function openEdit(id) {
+  const books = loadBooks();
+  const b = books.find(x => x.id === id);
+  if (!b) return;
+  editId    = id;
+  selEmoji  = b.emoji  || '📚';
+  selStatus = b.status || 'reading';
+  selGenre  = b.genre  || '';
+  selRating = b.rating || 0;
+  document.getElementById('f-title').value   = b.title  || '';
+  document.getElementById('f-author').value  = b.author || '';
+  document.getElementById('f-pages').value   = b.totalPages   || '';
+  document.getElementById('f-current').value = b.currentPage  || '';
+  document.getElementById('modal-title').textContent = 'Edit book';
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="btn-delete" onclick="deleteBook('${id}')">Delete</button>
+    <button class="btn-save" onclick="saveBook()">Save</button>`;
+  buildModalUI();
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+function handleModalBgClick(e) { if (e.target===document.getElementById('modal-bg')) closeModal(); }
+
+function pickEmoji(e) {
+  selEmoji = e;
+  document.querySelectorAll('.emoji-opt').forEach(el => el.classList.toggle('selected', el.textContent===e));
+}
+function pickStatus(s) {
+  selStatus = s;
+  document.querySelectorAll('.status-opt').forEach(el => el.classList.toggle('selected', el.dataset.status===s));
+  document.getElementById('rating-row').style.display = s==='read' ? '' : 'none';
+  document.querySelector('.form-row.row2').style.display = s==='want' ? 'none' : '';
+}
+function pickGenre(g) {
+  selGenre = g;
+  document.querySelectorAll('.genre-opt').forEach(el => el.classList.toggle('selected', el.dataset.genre===g));
+}
+function pickRating(n) {
+  selRating = n;
+  document.querySelectorAll('.star-btn').forEach((el,i) => el.classList.toggle('lit', i<n));
+}
+
+function saveBook() {
+  const title  = document.getElementById('f-title').value.trim();
+  if (!title) { document.getElementById('f-title').focus(); return; }
+  const author = document.getElementById('f-author').value.trim();
+  const pages  = parseInt(document.getElementById('f-pages').value)   || 0;
+  const cur    = parseInt(document.getElementById('f-current').value) || 0;
+
+  const books = loadBooks();
+  if (editId) {
+    const idx = books.findIndex(b => b.id===editId);
+    if (idx>=0) {
+      books[idx] = { ...books[idx], title, author, emoji: selEmoji, status: selStatus,
+        totalPages: pages, currentPage: cur, genre: selGenre, rating: selRating };
+      if (selStatus==='read' && !books[idx].dateFinished) books[idx].dateFinished = new Date().toISOString().slice(0,10);
+    }
+  } else {
+    books.push({ id: uid(), title, author, emoji: selEmoji, status: selStatus,
+      totalPages: pages, currentPage: cur, genre: selGenre, rating: selRating,
+      dateAdded: new Date().toISOString().slice(0,10), dateFinished: selStatus==='read'?new Date().toISOString().slice(0,10):null });
+  }
+  saveBooks(books);
+  closeModal();
+  renderReading();
+  renderLibrary();
+}
+
+function deleteBook(id) {
+  if (!confirm('Remove this book?')) return;
+  saveBooks(loadBooks().filter(b => b.id!==id));
+  closeModal();
+  renderReading();
+  renderLibrary();
+}
+
+function bumpPages(id, n) {
+  const books = loadBooks();
+  const idx = books.findIndex(b => b.id === id);
+  if (idx < 0) return;
+  const newPage = Math.min((books[idx].currentPage||0) + n, books[idx].totalPages||99999);
+  books[idx].currentPage = newPage;
+  if (books[idx].totalPages && newPage >= books[idx].totalPages) {
+    books[idx].status = 'read';
+    books[idx].dateFinished = new Date().toISOString().slice(0,10);
+  }
+  saveBooks(books);
+  touchStreak(); renderStreakUI();
+  renderReading();
+}
+
+// ── STREAK UI ──
+function renderStreakUI() {
+  const s = loadStreak();
+  const el = document.getElementById('streak-count');
+  if (el) el.textContent = s.count + (s.count === 1 ? ' day' : ' days');
+}
+
+// ── QUOTES ──
+let quotesBookId = '';
+function openQuotes(bookId, title) {
+  quotesBookId = bookId;
+  document.getElementById('quotes-modal-title').textContent = '💬 ' + title;
+  renderQuotesList();
+  document.getElementById('quotes-modal-bg').classList.add('open');
+}
+function closeQuotes() {
+  document.getElementById('quotes-modal-bg').classList.remove('open');
+}
+function renderQuotesList() {
+  const quotes = loadQuotes(quotesBookId);
+  const list = document.getElementById('quotes-list');
+  if (!quotes.length) {
+    list.innerHTML = '<div class="quotes-empty">No quotes yet.<br>Save your favourite lines ✨</div>';
+    return;
+  }
+  list.innerHTML = quotes.map(q => `
+    <div class="quote-item">
+      <div class="quote-text">"${esc(q.text)}"</div>
+      <div class="quote-meta">
+        <span>${q.date}</span>
+        <button class="quote-del" onclick="removeQuote('${q.id}')">remove</button>
+      </div>
+    </div>`).join('');
+}
+function addQuote() {
+  const inp = document.getElementById('quote-inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  saveQuote(quotesBookId, text);
+  inp.value = '';
+  renderQuotesList();
+}
+function removeQuote(qid) {
+  deleteQuote(quotesBookId, qid);
+  renderQuotesList();
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── INIT ──
+touchStreak();
+renderStreakUI();
+renderReading();
+</script>
+</body>
+</html>
